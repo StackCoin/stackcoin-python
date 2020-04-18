@@ -9,7 +9,7 @@ sys.path.append(
 
 from stackcoin import StackCoin
 
-client = StackCoin(base_url="http://localhost:3000", token="abc", user_id=123,)
+client = StackCoin(base_url="http://localhost:3000", token="abc", user_id=123)
 print(client.user())
 print(client.users())
 print(client.transfer(224890702218133505, 10))
