@@ -2,9 +2,17 @@ class StackCoinException(Exception):
     pass
 
 
-class InvalidToken(StackCoinException):
+class UnexpectedState(StackCoinException):
     pass
 
 
-class InvalidAccountId(StackCoinException):
+class RequestError(StackCoinException):
+    pass
+
+
+class AuthenticationFailure(RequestError):
+    pass
+
+
+class TransferFailure(RequestError):
     pass
