@@ -8,10 +8,18 @@ sys.path.append(
 # you don't need this in your code :)
 
 from stackcoin import StackCoin
+from stackcoin.types import TransferSuccess
 
 client = StackCoin(token="abc", user_id=123)
 
 
-print(client.user())
-print(client.users())
-print(client.transfer(321, 10))
+@client.notification()
+def return_to_sender(event):
+    """
+    Once sent STK, returns to sender
+    """
+    if isinstance(event, TransferSuccess):
+        client.transfer(event.from_id, event.amount)
+
+
+client.run()
