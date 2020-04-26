@@ -1,4 +1,5 @@
 *.sh
+*.dev.py
 
 venv/
 dist/
