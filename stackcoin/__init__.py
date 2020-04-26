@@ -35,6 +35,7 @@ class StackCoin:
         self._notification_decorator = None
 
         self._access_token = self._authenticate()
+        print(f"Authenticated with the StackCoin HTTP API as {self.user_id}")
 
     def notification(self):
         def decorator(func):
@@ -47,14 +48,20 @@ class StackCoin:
 
         return decorator
 
-    def run(self):
+    def ensure_decorator(self):
         if self._notification_decorator is None:
             raise StackCoinException(
                 "Can't run without assigning the notification decorator first!"
             )
 
+    def run(self):
+        self.ensure_decorator()
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._notification(loop))
+
+    async def start(self):
+        self.ensure_decorator()
+        await self._notification()
 
     async def _handle_ws_handle(self, ws):
         state = None
@@ -118,11 +125,16 @@ class StackCoin:
                 print(data)
                 break
 
-    async def _notification(self, loop):
+    async def _notification(self):
+        loop = asyncio.get_event_loop()
+
         async with aiohttp.ClientSession(loop=loop) as session:
             async with session.ws_connect(
                 f"{self.base_ws_url}/notification/{self.user_id}"
             ) as ws:
+                print(
+                    f"Connected to the StackCoin WS Notification endpoint as {self.user_id}"
+                )
                 try:
                     await self._handle_ws_handle(ws)
                 finally:

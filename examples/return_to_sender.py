@@ -18,7 +18,9 @@ def return_to_sender(event):
     """
     Once sent STK, returns to sender
     """
+    print(f"Got event: {event}")
     if isinstance(event, TransferSuccess):
+        print(f"Sending {event.amount} back to {event.from_id}")
         client.transfer(event.from_id, event.amount)
 
 
