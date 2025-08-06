@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -47,8 +47,43 @@ class PaymentRequest(BaseModel):
     transaction_id: Optional[int]
 
 
+class PaginationInfo(BaseModel):
+    page: int
+    limit: int
+    total: int
+    total_pages: int
+
+
 class RequestsResponse(BaseModel):
     requests: List[PaymentRequest]
+    pagination: Optional[PaginationInfo] = None
+
+
+class Transaction(BaseModel):
+    id: int
+    from_: User = Field(alias="from")
+    to: User
+    amount: int
+    time: datetime
+    label: Optional[str]
+
+
+class TransactionsResponse(BaseModel):
+    transactions: List[Transaction]
+    pagination: Optional[PaginationInfo] = None
+
+
+class UserInfo(BaseModel):
+    id: int
+    username: str
+    balance: int
+    admin: bool
+    banned: bool
+
+
+class UsersResponse(BaseModel):
+    users: List[UserInfo]
+    pagination: Optional[PaginationInfo] = None
 
 
 class RequestActionResponse(BaseModel):

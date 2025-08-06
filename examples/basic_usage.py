@@ -32,17 +32,50 @@ async def main(token, base_url):
             print(f"Could not create request: {e}")
 
         # List payment requests where bot is the requester
-        requests = await client.get_requests(role="requester")
-        print(f"You have {len(requests.requests)} outgoing requests")
+        requester_count = 0
+        async for req in client.stream_requests(role="requester"):
+            requester_count += 1
+        print(f"You have {requester_count} outgoing requests")
 
         # List pending requests where bot is the responder
-        pending = await client.get_requests(role="responder", status="pending")
-        print(f"You have {len(pending.requests)} pending requests to respond to")
+        pending_count = 0
+        first_pending_req = None
+        async for req in client.stream_requests(role="responder", status="pending"):
+            if first_pending_req is None:
+                first_pending_req = req
+            pending_count += 1
+        print(f"You have {pending_count} pending requests to respond to")
+
+        # List recent transactions
+        transaction_count = 0
+        print("Recent transactions:")
+        async for txn in client.stream_transactions():
+            label_str = f" ({txn.label})" if txn.label else ""
+            print(f"  {txn.from_.username} → {txn.to.username}: {txn.amount} STK{label_str}")
+            transaction_count += 1
+            if transaction_count >= 5:
+                break
+        print(f"Showing {transaction_count} recent transactions")
+
+        # List top users by balance
+        user_count = 0
+        print("Top users by balance:")
+        async for user in client.stream_users():
+            status_flags = []
+            if user.admin:
+                status_flags.append("ADMIN")
+            if user.banned:
+                status_flags.append("BANNED")
+            status_str = f" [{', '.join(status_flags)}]" if status_flags else ""
+            print(f"  {user.username}: {user.balance} STK{status_str}")
+            user_count += 1
+            if user_count >= 5:
+                break
+        print(f"Showing top {user_count} users")
 
         # Accept a request (commented out for safety)
-        # if pending.requests:
-        #     req = pending.requests[0]
-        #     result = await client.accept_request(req.id)
+        # if first_pending_req:
+        #     result = await client.accept_request(first_pending_req.id)
         #     print(f"Accepted request #{result.request_id}")
 
 
