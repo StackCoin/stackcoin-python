@@ -52,7 +52,9 @@ async def run_repl(client):
                     if user.banned:
                         status_flags.append("BANNED")
                     status_str = f" [{', '.join(status_flags)}]" if status_flags else ""
-                    print(f"  #{user.id}: {user.username} - {user.balance} STK{status_str}")
+                    print(
+                        f"  #{user.id}: {user.username} - {user.balance} STK{status_str}"
+                    )
                     count += 1
                     if count >= 20:
                         break
@@ -91,13 +93,21 @@ async def run_repl(client):
                         break
                 print(f"Showing first {count} requests")
             elif cmd == "transactions":
-                from_user_id = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
-                to_user_id = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else None
+                from_user_id = (
+                    int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+                )
+                to_user_id = (
+                    int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else None
+                )
                 count = 0
                 print("Recent transactions:")
-                async for txn in client.stream_transactions(from_user_id=from_user_id, to_user_id=to_user_id):
+                async for txn in client.stream_transactions(
+                    from_user_id=from_user_id, to_user_id=to_user_id
+                ):
                     label_str = f" ({txn.label})" if txn.label else ""
-                    print(f"  #{txn.id}: {txn.from_.username} → {txn.to.username} {txn.amount} STK{label_str} at {txn.time}")
+                    print(
+                        f"  #{txn.id}: {txn.from_.username} → {txn.to.username} {txn.amount} STK{label_str} at {txn.time}"
+                    )
                     count += 1
                     if count >= 10:
                         break

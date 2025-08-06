@@ -51,7 +51,9 @@ async def main(token, base_url):
         print("Recent transactions:")
         async for txn in client.stream_transactions():
             label_str = f" ({txn.label})" if txn.label else ""
-            print(f"  {txn.from_.username} → {txn.to.username}: {txn.amount} STK{label_str}")
+            print(
+                f"  {txn.from_.username} → {txn.to.username}: {txn.amount} STK{label_str}"
+            )
             transaction_count += 1
             if transaction_count >= 5:
                 break
