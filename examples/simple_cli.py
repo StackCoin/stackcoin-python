@@ -1,6 +1,7 @@
 import asyncio
 import os
 from stackcoin_python import AuthenticatedClient
+from stackcoin_python.types import Unset
 from stackcoin_python.models import (
     CreateRequestParams,
     SendStkParams,
@@ -64,15 +65,21 @@ async def run_repl(client):
                 print(f"Bot: {balance.username}, Balance: {balance.balance} STK")
             elif cmd == "user" and len(parts) >= 2:
                 user_id = int(parts[1])
-                balance = await stackcoin_user_balance.asyncio(client=client, user_id=user_id)
+                balance = await stackcoin_user_balance.asyncio(
+                    client=client, user_id=user_id
+                )
                 if not isinstance(balance, BalanceResponse):
                     print("Error: Failed to get user balance")
                     continue
                 print(f"User: {balance.username}, Balance: {balance.balance} STK")
             elif cmd == "users":
-                username_filter = parts[1] if len(parts) > 1 else None
-                users_response = await stackcoin_users.asyncio(client=client, username=username_filter)
-                if not isinstance(users_response, UsersResponse) or not isinstance(users_response.users, list):
+                username_filter = parts[1] if len(parts) > 1 else Unset()
+                users_response = await stackcoin_users.asyncio(
+                    client=client, username=username_filter
+                )
+                if not isinstance(users_response, UsersResponse) or not isinstance(
+                    users_response.users, list
+                ):
                     print("Error: Failed to get users")
                     continue
                 count = 0
@@ -98,7 +105,7 @@ async def run_repl(client):
                 result = await stackcoin_send_stk.asyncio(
                     client=client,
                     user_id=user_id,
-                    body=SendStkParams(amount=amount, label=label)
+                    body=SendStkParams(amount=amount, label=label),
                 )
                 if not isinstance(result, SendStkResponse):
                     print("Error: Failed to send STK")
@@ -113,7 +120,7 @@ async def run_repl(client):
                 result = await stackcoin_create_request.asyncio(
                     client=client,
                     user_id=user_id,
-                    body=CreateRequestParams(amount=amount, label=label)
+                    body=CreateRequestParams(amount=amount, label=label),
                 )
                 if not isinstance(result, CreateRequestResponse):
                     print("Error: Failed to create request")
@@ -123,8 +130,12 @@ async def run_repl(client):
                 )
             elif cmd == "requests":
                 role = parts[1] if len(parts) > 1 else "requester"
-                requests_response = await stackcoin_requests.asyncio(client=client, role=role)
-                if not isinstance(requests_response, RequestsResponse) or not isinstance(requests_response.requests, list):
+                requests_response = await stackcoin_requests.asyncio(
+                    client=client, role=role
+                )
+                if not isinstance(
+                    requests_response, RequestsResponse
+                ) or not isinstance(requests_response.requests, list):
                     print("Error: Failed to get requests")
                     continue
                 count = 0
@@ -144,15 +155,17 @@ async def run_repl(client):
                 print(f"Showing first {count} requests")
             elif cmd == "transactions":
                 from_user_id = (
-                    int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+                    int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else Unset()
                 )
                 to_user_id = (
-                    int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else None
+                    int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else Unset()
                 )
                 transactions_response = await stackcoin_transactions.asyncio(
                     client=client, from_user_id=from_user_id, to_user_id=to_user_id
                 )
-                if not isinstance(transactions_response, TransactionsResponse) or not isinstance(transactions_response.transactions, list):
+                if not isinstance(
+                    transactions_response, TransactionsResponse
+                ) or not isinstance(transactions_response.transactions, list):
                     print("Error: Failed to get transactions")
                     continue
                 count = 0
@@ -168,14 +181,18 @@ async def run_repl(client):
                 print(f"Showing first {count} transactions")
             elif cmd == "accept" and len(parts) >= 2:
                 request_id = int(parts[1])
-                result = await stackcoin_accept_request.asyncio(client=client, request_id=request_id)
+                result = await stackcoin_accept_request.asyncio(
+                    client=client, request_id=request_id
+                )
                 if not isinstance(result, RequestActionResponse):
                     print("Error: Failed to accept request")
                     continue
                 print(f"Accepted request {result.request_id}, status: {result.status}")
             elif cmd == "deny" and len(parts) >= 2:
                 request_id = int(parts[1])
-                result = await stackcoin_deny_request.asyncio(client=client, request_id=request_id)
+                result = await stackcoin_deny_request.asyncio(
+                    client=client, request_id=request_id
+                )
                 if not isinstance(result, RequestActionResponse):
                     print("Error: Failed to deny request")
                     continue
