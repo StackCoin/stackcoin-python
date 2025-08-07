@@ -1,84 +1,96 @@
 import asyncio
 import os
-from stackcoin_python import StackCoinClient
+from stackcoin_python import AuthenticatedClient
+from stackcoin_python.models import (
+    CreateRequestParams,
+    BalanceResponse,
+    CreateRequestResponse,
+    RequestsResponse,
+    TransactionsResponse,
+    UsersResponse,
+)
+from stackcoin_python.api.default import (
+    stackcoin_self_balance,
+    stackcoin_create_request,
+    stackcoin_users,
+    stackcoin_requests,
+    stackcoin_transactions,
+)
 
 
 async def main(token, base_url):
-    """Basic usage examples for the StackCoin client."""
-    async with StackCoinClient(token, base_url=base_url) as client:
-        # Get bot's balance
-        balance = await client.get_my_balance()
-        print(f"Bot: {balance.username}")
-        print(f"Balance: {balance.balance} STK")
+    client = AuthenticatedClient(base_url=base_url, token=token)
 
-        # Get another user's balance
-        try:
-            user_balance = await client.get_balance(1)
-            print(f"User {user_balance.username} has {user_balance.balance} STK")
-        except Exception as e:
-            print(f"Could not get user balance: {e}")
+    async with client as client:
+        print("Getting balance")
 
-        # Send tokens (commented out for safety)
-        # result = await client.send(123, 10, "Test payment")
-        # print(f"Sent {result.amount} STK! New balance: {result.from_new_balance}")
+        my_balance = await stackcoin_self_balance.asyncio(client=client)
 
-        # Create a payment request
-        try:
-            request = await client.request_payment(2, 5, "Service fee")
+        if not isinstance(my_balance, BalanceResponse):
+            raise Exception("Failed to get balance")
+
+        print(f"Logged in as {my_balance.username} with balance {my_balance.balance}")
+
+        print("Creating request")
+
+        request = await stackcoin_create_request.asyncio(
+            client=client,
+            user_id=2,
+            body=CreateRequestParams(
+                amount=100,
+                label="pay up buddy",
+            ),
+        )
+
+        if not isinstance(request, CreateRequestResponse):
+            raise Exception("Failed to create request")
+
+        print(
+            f"Created request {request.request_id} to {request.responder.username} with amount {request.amount}"
+        )
+
+        print("Getting requests")
+
+        requests = await stackcoin_requests.asyncio(client=client)
+
+        if not isinstance(requests, RequestsResponse):
+            raise Exception("Failed to get requests")
+
+        if not isinstance(requests.requests, list):
+            raise Exception("Failed to get requests")
+
+        for request in requests.requests:
             print(
-                f"Created payment request #{request.request_id} for {request.amount} STK"
+                f"Request {request.id} to {request.responder.username} with amount {request.amount}"
             )
-        except Exception as e:
-            print(f"Could not create request: {e}")
 
-        # List payment requests where bot is the requester
-        requester_count = 0
-        async for req in client.stream_requests(role="requester"):
-            requester_count += 1
-        print(f"You have {requester_count} outgoing requests")
+        print("Getting transactions")
 
-        # List pending requests where bot is the responder
-        pending_count = 0
-        first_pending_req = None
-        async for req in client.stream_requests(role="responder", status="pending"):
-            if first_pending_req is None:
-                first_pending_req = req
-            pending_count += 1
-        print(f"You have {pending_count} pending requests to respond to")
+        transactions = await stackcoin_transactions.asyncio(client=client)
 
-        # List recent transactions
-        transaction_count = 0
-        print("Recent transactions:")
-        async for txn in client.stream_transactions():
-            label_str = f" ({txn.label})" if txn.label else ""
+        if not isinstance(transactions, TransactionsResponse):
+            raise Exception("Failed to get transactions")
+
+        if not isinstance(transactions.transactions, list):
+            raise Exception("Failed to get transactions")
+
+        for transaction in transactions.transactions:
             print(
-                f"  {txn.from_.username} → {txn.to.username}: {txn.amount} STK{label_str}"
+                f"Transaction {transaction.id} from {transaction.from_.username} to {transaction.to.username} with amount {transaction.amount}"
             )
-            transaction_count += 1
-            if transaction_count >= 5:
-                break
-        print(f"Showing {transaction_count} recent transactions")
 
-        # List top users by balance
-        user_count = 0
-        print("Top users by balance:")
-        async for user in client.stream_users():
-            status_flags = []
-            if user.admin:
-                status_flags.append("ADMIN")
-            if user.banned:
-                status_flags.append("BANNED")
-            status_str = f" [{', '.join(status_flags)}]" if status_flags else ""
-            print(f"  {user.username}: {user.balance} STK{status_str}")
-            user_count += 1
-            if user_count >= 5:
-                break
-        print(f"Showing top {user_count} users")
+        print("Getting users")
 
-        # Accept a request (commented out for safety)
-        # if first_pending_req:
-        #     result = await client.accept_request(first_pending_req.id)
-        #     print(f"Accepted request #{result.request_id}")
+        users = await stackcoin_users.asyncio(client=client)
+
+        if not isinstance(users, UsersResponse):
+            raise Exception("Failed to get users")
+
+        if not isinstance(users.users, list):
+            raise Exception("Failed to get users")
+
+        for user in users.users:
+            print(f"User {user.id} {user.username}")
 
 
 if __name__ == "__main__":
