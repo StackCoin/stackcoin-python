@@ -5,6 +5,10 @@ from .create_request_params import CreateRequestParams
 from .create_request_response import CreateRequestResponse
 from .create_request_response_requester import CreateRequestResponseRequester
 from .create_request_response_responder import CreateRequestResponseResponder
+from .discord_guild import DiscordGuild
+from .discord_guild_response import DiscordGuildResponse
+from .discord_guilds_response import DiscordGuildsResponse
+from .discord_guilds_response_pagination import DiscordGuildsResponsePagination
 from .error_response import ErrorResponse
 from .request import Request
 from .request_action_response import RequestActionResponse
@@ -29,6 +33,10 @@ __all__ = (
     "CreateRequestResponse",
     "CreateRequestResponseRequester",
     "CreateRequestResponseResponder",
+    "DiscordGuild",
+    "DiscordGuildResponse",
+    "DiscordGuildsResponse",
+    "DiscordGuildsResponsePagination",
     "ErrorResponse",
     "Request",
     "RequestActionResponse",
