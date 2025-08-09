@@ -1,58 +1,55 @@
 from collections.abc import Mapping
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="BalanceResponse")
+from ..types import UNSET, Unset
+
+T = TypeVar("T", bound="TransactionResponseTo")
 
 
 @_attrs_define
-class BalanceResponse:
-    """Response schema for user balance
-
-    Example:
-        {'balance': 1000, 'username': 'johndoe'}
-
+class TransactionResponseTo:
+    """
     Attributes:
-        balance (int): User's STK balance
-        username (str): Username
+        id (Union[Unset, int]): To user ID
+        username (Union[Unset, str]): To username
     """
 
-    balance: int
-    username: str
+    id: Union[Unset, int] = UNSET
+    username: Union[Unset, str] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        balance = self.balance
+        id = self.id
 
         username = self.username
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "balance": balance,
-                "username": username,
-            }
-        )
+        field_dict.update({})
+        if id is not UNSET:
+            field_dict["id"] = id
+        if username is not UNSET:
+            field_dict["username"] = username
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        balance = d.pop("balance")
+        id = d.pop("id", UNSET)
 
-        username = d.pop("username")
+        username = d.pop("username", UNSET)
 
-        balance_response = cls(
-            balance=balance,
+        transaction_response_to = cls(
+            id=id,
             username=username,
         )
 
-        balance_response.additional_properties = d
-        return balance_response
+        transaction_response_to.additional_properties = d
+        return transaction_response_to
 
     @property
     def additional_keys(self) -> list[str]:

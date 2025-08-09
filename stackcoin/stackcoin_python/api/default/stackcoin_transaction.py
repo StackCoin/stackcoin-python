@@ -5,47 +5,29 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.create_request_params import CreateRequestParams
-from ...models.create_request_response import CreateRequestResponse
 from ...models.error_response import ErrorResponse
+from ...models.transaction_response import TransactionResponse
 from ...types import Response
 
 
 def _get_kwargs(
-    user_id: int,
-    *,
-    body: CreateRequestParams,
+    transaction_id: int,
 ) -> dict[str, Any]:
-    headers: dict[str, Any] = {}
-
     _kwargs: dict[str, Any] = {
-        "method": "post",
-        "url": f"/api/user/{user_id}/request",
+        "method": "get",
+        "url": f"/api/transaction/{transaction_id}",
     }
 
-    _kwargs["json"] = body.to_dict()
-
-    headers["Content-Type"] = "application/json"
-
-    _kwargs["headers"] = headers
     return _kwargs
 
 
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[CreateRequestResponse, ErrorResponse]]:
+) -> Optional[Union[ErrorResponse, TransactionResponse]]:
     if response.status_code == 200:
-        response_200 = CreateRequestResponse.from_dict(response.json())
+        response_200 = TransactionResponse.from_dict(response.json())
 
         return response_200
-    if response.status_code == 400:
-        response_400 = ErrorResponse.from_dict(response.json())
-
-        return response_400
-    if response.status_code == 403:
-        response_403 = ErrorResponse.from_dict(response.json())
-
-        return response_403
     if response.status_code == 404:
         response_404 = ErrorResponse.from_dict(response.json())
 
@@ -58,7 +40,7 @@ def _parse_response(
 
 def _build_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[CreateRequestResponse, ErrorResponse]]:
+) -> Response[Union[ErrorResponse, TransactionResponse]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -68,31 +50,27 @@ def _build_response(
 
 
 def sync_detailed(
-    user_id: int,
+    transaction_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: CreateRequestParams,
-) -> Response[Union[CreateRequestResponse, ErrorResponse]]:
-    """Create a STK request
+) -> Response[Union[ErrorResponse, TransactionResponse]]:
+    """Get transaction by ID
 
-     Creates a request for STK from a specified user.
+     Retrieves a single transaction by its ID.
 
     Args:
-        user_id (int):
-        body (CreateRequestParams): Parameters for creating a STK request Example: {'amount': 200,
-            'label': 'Payment request'}.
+        transaction_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[CreateRequestResponse, ErrorResponse]]
+        Response[Union[ErrorResponse, TransactionResponse]]
     """
 
     kwargs = _get_kwargs(
-        user_id=user_id,
-        body=body,
+        transaction_id=transaction_id,
     )
 
     response = client.get_httpx_client().request(
@@ -103,61 +81,53 @@ def sync_detailed(
 
 
 def sync(
-    user_id: int,
+    transaction_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: CreateRequestParams,
-) -> Optional[Union[CreateRequestResponse, ErrorResponse]]:
-    """Create a STK request
+) -> Optional[Union[ErrorResponse, TransactionResponse]]:
+    """Get transaction by ID
 
-     Creates a request for STK from a specified user.
+     Retrieves a single transaction by its ID.
 
     Args:
-        user_id (int):
-        body (CreateRequestParams): Parameters for creating a STK request Example: {'amount': 200,
-            'label': 'Payment request'}.
+        transaction_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[CreateRequestResponse, ErrorResponse]
+        Union[ErrorResponse, TransactionResponse]
     """
 
     return sync_detailed(
-        user_id=user_id,
+        transaction_id=transaction_id,
         client=client,
-        body=body,
     ).parsed
 
 
 async def asyncio_detailed(
-    user_id: int,
+    transaction_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: CreateRequestParams,
-) -> Response[Union[CreateRequestResponse, ErrorResponse]]:
-    """Create a STK request
+) -> Response[Union[ErrorResponse, TransactionResponse]]:
+    """Get transaction by ID
 
-     Creates a request for STK from a specified user.
+     Retrieves a single transaction by its ID.
 
     Args:
-        user_id (int):
-        body (CreateRequestParams): Parameters for creating a STK request Example: {'amount': 200,
-            'label': 'Payment request'}.
+        transaction_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[CreateRequestResponse, ErrorResponse]]
+        Response[Union[ErrorResponse, TransactionResponse]]
     """
 
     kwargs = _get_kwargs(
-        user_id=user_id,
-        body=body,
+        transaction_id=transaction_id,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -166,32 +136,28 @@ async def asyncio_detailed(
 
 
 async def asyncio(
-    user_id: int,
+    transaction_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: CreateRequestParams,
-) -> Optional[Union[CreateRequestResponse, ErrorResponse]]:
-    """Create a STK request
+) -> Optional[Union[ErrorResponse, TransactionResponse]]:
+    """Get transaction by ID
 
-     Creates a request for STK from a specified user.
+     Retrieves a single transaction by its ID.
 
     Args:
-        user_id (int):
-        body (CreateRequestParams): Parameters for creating a STK request Example: {'amount': 200,
-            'label': 'Payment request'}.
+        transaction_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[CreateRequestResponse, ErrorResponse]
+        Union[ErrorResponse, TransactionResponse]
     """
 
     return (
         await asyncio_detailed(
-            user_id=user_id,
+            transaction_id=transaction_id,
             client=client,
-            body=body,
         )
     ).parsed

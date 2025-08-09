@@ -5,15 +5,17 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.balance_response import BalanceResponse
 from ...models.error_response import ErrorResponse
+from ...models.request_response import RequestResponse
 from ...types import Response
 
 
-def _get_kwargs() -> dict[str, Any]:
+def _get_kwargs(
+    request_id: int,
+) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/balance",
+        "url": f"/api/request/{request_id}",
     }
 
     return _kwargs
@@ -21,9 +23,9 @@ def _get_kwargs() -> dict[str, Any]:
 
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[BalanceResponse, ErrorResponse]]:
+) -> Optional[Union[ErrorResponse, RequestResponse]]:
     if response.status_code == 200:
-        response_200 = BalanceResponse.from_dict(response.json())
+        response_200 = RequestResponse.from_dict(response.json())
 
         return response_200
     if response.status_code == 404:
@@ -38,7 +40,7 @@ def _parse_response(
 
 def _build_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[BalanceResponse, ErrorResponse]]:
+) -> Response[Union[ErrorResponse, RequestResponse]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -48,22 +50,28 @@ def _build_response(
 
 
 def sync_detailed(
+    request_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Response[Union[BalanceResponse, ErrorResponse]]:
-    """Get authenticated user's balance
+) -> Response[Union[ErrorResponse, RequestResponse]]:
+    """Get request by ID
 
-     Returns the balance and username of the authenticated user.
+     Retrieves a single request by its ID.
+
+    Args:
+        request_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[BalanceResponse, ErrorResponse]]
+        Response[Union[ErrorResponse, RequestResponse]]
     """
 
-    kwargs = _get_kwargs()
+    kwargs = _get_kwargs(
+        request_id=request_id,
+    )
 
     response = client.get_httpx_client().request(
         **kwargs,
@@ -73,43 +81,54 @@ def sync_detailed(
 
 
 def sync(
+    request_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Optional[Union[BalanceResponse, ErrorResponse]]:
-    """Get authenticated user's balance
+) -> Optional[Union[ErrorResponse, RequestResponse]]:
+    """Get request by ID
 
-     Returns the balance and username of the authenticated user.
+     Retrieves a single request by its ID.
+
+    Args:
+        request_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[BalanceResponse, ErrorResponse]
+        Union[ErrorResponse, RequestResponse]
     """
 
     return sync_detailed(
+        request_id=request_id,
         client=client,
     ).parsed
 
 
 async def asyncio_detailed(
+    request_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Response[Union[BalanceResponse, ErrorResponse]]:
-    """Get authenticated user's balance
+) -> Response[Union[ErrorResponse, RequestResponse]]:
+    """Get request by ID
 
-     Returns the balance and username of the authenticated user.
+     Retrieves a single request by its ID.
+
+    Args:
+        request_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[BalanceResponse, ErrorResponse]]
+        Response[Union[ErrorResponse, RequestResponse]]
     """
 
-    kwargs = _get_kwargs()
+    kwargs = _get_kwargs(
+        request_id=request_id,
+    )
 
     response = await client.get_async_httpx_client().request(**kwargs)
 
@@ -117,23 +136,28 @@ async def asyncio_detailed(
 
 
 async def asyncio(
+    request_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Optional[Union[BalanceResponse, ErrorResponse]]:
-    """Get authenticated user's balance
+) -> Optional[Union[ErrorResponse, RequestResponse]]:
+    """Get request by ID
 
-     Returns the balance and username of the authenticated user.
+     Retrieves a single request by its ID.
+
+    Args:
+        request_id (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[BalanceResponse, ErrorResponse]
+        Union[ErrorResponse, RequestResponse]
     """
 
     return (
         await asyncio_detailed(
+            request_id=request_id,
             client=client,
         )
     ).parsed

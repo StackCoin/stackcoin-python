@@ -5,8 +5,8 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.balance_response import BalanceResponse
 from ...models.error_response import ErrorResponse
+from ...models.user_response import UserResponse
 from ...types import Response
 
 
@@ -15,7 +15,7 @@ def _get_kwargs(
 ) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": f"/api/users/{user_id}/balance",
+        "url": f"/api/user/{user_id}",
     }
 
     return _kwargs
@@ -23,15 +23,11 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[BalanceResponse, ErrorResponse]]:
+) -> Optional[Union[ErrorResponse, UserResponse]]:
     if response.status_code == 200:
-        response_200 = BalanceResponse.from_dict(response.json())
+        response_200 = UserResponse.from_dict(response.json())
 
         return response_200
-    if response.status_code == 400:
-        response_400 = ErrorResponse.from_dict(response.json())
-
-        return response_400
     if response.status_code == 404:
         response_404 = ErrorResponse.from_dict(response.json())
 
@@ -44,7 +40,7 @@ def _parse_response(
 
 def _build_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[BalanceResponse, ErrorResponse]]:
+) -> Response[Union[ErrorResponse, UserResponse]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -57,10 +53,10 @@ def sync_detailed(
     user_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Response[Union[BalanceResponse, ErrorResponse]]:
-    """Get user balance by ID
+) -> Response[Union[ErrorResponse, UserResponse]]:
+    """Get user by ID
 
-     Returns the balance and username of a specific user.
+     Retrieves a single user by their ID.
 
     Args:
         user_id (int):
@@ -70,7 +66,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[BalanceResponse, ErrorResponse]]
+        Response[Union[ErrorResponse, UserResponse]]
     """
 
     kwargs = _get_kwargs(
@@ -88,10 +84,10 @@ def sync(
     user_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Optional[Union[BalanceResponse, ErrorResponse]]:
-    """Get user balance by ID
+) -> Optional[Union[ErrorResponse, UserResponse]]:
+    """Get user by ID
 
-     Returns the balance and username of a specific user.
+     Retrieves a single user by their ID.
 
     Args:
         user_id (int):
@@ -101,7 +97,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[BalanceResponse, ErrorResponse]
+        Union[ErrorResponse, UserResponse]
     """
 
     return sync_detailed(
@@ -114,10 +110,10 @@ async def asyncio_detailed(
     user_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Response[Union[BalanceResponse, ErrorResponse]]:
-    """Get user balance by ID
+) -> Response[Union[ErrorResponse, UserResponse]]:
+    """Get user by ID
 
-     Returns the balance and username of a specific user.
+     Retrieves a single user by their ID.
 
     Args:
         user_id (int):
@@ -127,7 +123,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[BalanceResponse, ErrorResponse]]
+        Response[Union[ErrorResponse, UserResponse]]
     """
 
     kwargs = _get_kwargs(
@@ -143,10 +139,10 @@ async def asyncio(
     user_id: int,
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Optional[Union[BalanceResponse, ErrorResponse]]:
-    """Get user balance by ID
+) -> Optional[Union[ErrorResponse, UserResponse]]:
+    """Get user by ID
 
-     Returns the balance and username of a specific user.
+     Retrieves a single user by their ID.
 
     Args:
         user_id (int):
@@ -156,7 +152,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[BalanceResponse, ErrorResponse]
+        Union[ErrorResponse, UserResponse]
     """
 
     return (
