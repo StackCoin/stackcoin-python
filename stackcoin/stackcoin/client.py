@@ -56,8 +56,6 @@ class Client:
             timeout=timeout,
         )
 
-    # -- context manager -------------------------------------------------- #
-
     async def __aenter__(self) -> Client:
         return self
 
@@ -73,8 +71,6 @@ class Client:
         """Close the underlying HTTP connection pool."""
         await self._http.aclose()
 
-    # -- shared helpers --------------------------------------------------- #
-
     @staticmethod
     def _raise_for_error(resp: httpx.Response) -> None:
         """Raise :class:`StackCoinError` on any 4xx/5xx response."""
@@ -86,8 +82,6 @@ class Client:
             error = body.get("error", f"http_{resp.status_code}")
             message = body.get("message")
             raise StackCoinError(resp.status_code, error, message)
-
-    # -- users ------------------------------------------------------------ #
 
     async def get_me(self) -> User:
         """Return the authenticated user's profile."""
@@ -111,8 +105,6 @@ class Client:
         wrapper = UsersResponse.model_validate(resp.json())
         return wrapper.users or []
 
-    # -- send ------------------------------------------------------------- #
-
     async def send(
         self,
         to_user_id: int,
@@ -135,8 +127,6 @@ class Client:
         )
         self._raise_for_error(resp)
         return SendStkResponse.model_validate(resp.json())
-
-    # -- requests --------------------------------------------------------- #
 
     async def create_request(
         self,
@@ -189,8 +179,6 @@ class Client:
         self._raise_for_error(resp)
         return RequestActionResponse.model_validate(resp.json())
 
-    # -- transactions ----------------------------------------------------- #
-
     async def get_transactions(self) -> list[Transaction]:
         """Return transactions for the authenticated user."""
         resp = await self._http.get("/api/transactions")
@@ -204,8 +192,6 @@ class Client:
         self._raise_for_error(resp)
         return Transaction.model_validate(resp.json())
 
-    # -- events ----------------------------------------------------------- #
-
     async def get_events(self, *, since_id: int = 0) -> list[AnyEvent]:
         """Return typed events since the given ID."""
         params: dict[str, Any] = {}
@@ -215,8 +201,6 @@ class Client:
         self._raise_for_error(resp)
         wrapper = EventsResponse.model_validate(resp.json())
         return [e.root for e in wrapper.events]
-
-    # -- discord guilds --------------------------------------------------- #
 
     async def get_discord_guilds(self) -> list[DiscordGuild]:
         """Return all Discord guilds."""
