@@ -1,4 +1,4 @@
-"""Basic usage of the stackcoin SDK."""
+"""Basic usage of the stackcoin library."""
 
 import asyncio
 import os
