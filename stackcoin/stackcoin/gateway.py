@@ -4,19 +4,11 @@ import asyncio
 import json
 from typing import Any, Callable, Awaitable
 
-from pydantic import BaseModel
+from .client import AnyEvent
+from .models import Event
 
 
-EventHandler = Callable[["Event"], Awaitable[None]]
-
-
-class Event(BaseModel):
-    """A StackCoin event received via the gateway."""
-
-    id: int
-    type: str
-    data: dict[str, Any]
-    inserted_at: str
+EventHandler = Callable[[AnyEvent], Awaitable[None]]
 
 
 class Gateway:
@@ -30,8 +22,8 @@ class Gateway:
         )
 
         @gateway.on("request.accepted")
-        async def handle_accepted(event: stackcoin.Event):
-            print(event.data["request_id"])
+        async def handle_accepted(event: stackcoin.RequestAcceptedEvent):
+            print(event.data.request_id)
 
         await gateway.connect()
     """
@@ -133,20 +125,21 @@ class Gateway:
         payload = msg[4]
 
         if event_name == "event":
-            event = Event.model_validate(payload)
+            # Parse via discriminated union RootModel, then unwrap
+            typed_event = Event.model_validate(payload).root
 
-            if event.id > self._last_event_id:
-                self._last_event_id = event.id
+            if typed_event.id > self._last_event_id:
+                self._last_event_id = typed_event.id
 
-            for handler in self._handlers.get(event.type, []):
+            for handler in self._handlers.get(typed_event.type, []):
                 try:
-                    await handler(event)
+                    await handler(typed_event)
                 except Exception:
                     pass
 
-            if event.id > 0 and self._on_event_id:
+            if typed_event.id > 0 and self._on_event_id:
                 try:
-                    self._on_event_id(event.id)
+                    self._on_event_id(typed_event.id)
                 except Exception:
                     pass
 

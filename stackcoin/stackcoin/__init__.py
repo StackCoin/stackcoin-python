@@ -1,7 +1,32 @@
 """StackCoin Python SDK."""
 
-from .client import Client
+from .client import AnyEvent, Client
 from .errors import StackCoinError
-from .gateway import Event, Gateway
+from .gateway import Gateway
+from .models import (
+    Event,
+    RequestAcceptedData,
+    RequestAcceptedEvent,
+    RequestCreatedData,
+    RequestCreatedEvent,
+    RequestDeniedData,
+    RequestDeniedEvent,
+    TransferCompletedData,
+    TransferCompletedEvent,
+)
 
-__all__ = ["Client", "Event", "Gateway", "StackCoinError"]
+__all__ = [
+    "AnyEvent",
+    "Client",
+    "Event",
+    "Gateway",
+    "RequestAcceptedData",
+    "RequestAcceptedEvent",
+    "RequestCreatedData",
+    "RequestCreatedEvent",
+    "RequestDeniedData",
+    "RequestDeniedEvent",
+    "StackCoinError",
+    "TransferCompletedData",
+    "TransferCompletedEvent",
+]

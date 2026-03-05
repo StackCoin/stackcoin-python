@@ -140,31 +140,26 @@ async def main():
         gateway = stackcoin.Gateway(ws_url=ws_url, token=token)
 
         @gateway.on("transfer.completed")
-        async def on_transfer(event: stackcoin.Event):
-            d = event.data
-            role = d.get("role", "?")
-            if role == "sender":
-                print(f"\n  [event] Sent {d['amount']} STK to user #{d['to_id']}")
+        async def on_transfer(event: stackcoin.TransferCompletedEvent):
+            if event.data.role == "sender":
+                print(f"\n  [event] Sent {event.data.amount} STK to user #{event.data.to_id}")
             else:
-                print(f"\n  [event] Received {d['amount']} STK from user #{d['from_id']}")
+                print(f"\n  [event] Received {event.data.amount} STK from user #{event.data.from_id}")
             print("> ", end="", flush=True)
 
         @gateway.on("request.created")
-        async def on_request_created(event: stackcoin.Event):
-            d = event.data
-            print(f"\n  [event] New request #{d['request_id']} for {d['amount']} STK")
+        async def on_request_created(event: stackcoin.RequestCreatedEvent):
+            print(f"\n  [event] New request #{event.data.request_id} for {event.data.amount} STK")
             print("> ", end="", flush=True)
 
         @gateway.on("request.accepted")
-        async def on_request_accepted(event: stackcoin.Event):
-            d = event.data
-            print(f"\n  [event] Request #{d['request_id']} accepted")
+        async def on_request_accepted(event: stackcoin.RequestAcceptedEvent):
+            print(f"\n  [event] Request #{event.data.request_id} accepted")
             print("> ", end="", flush=True)
 
         @gateway.on("request.denied")
-        async def on_request_denied(event: stackcoin.Event):
-            d = event.data
-            print(f"\n  [event] Request #{d['request_id']} denied")
+        async def on_request_denied(event: stackcoin.RequestDeniedEvent):
+            print(f"\n  [event] Request #{event.data.request_id} denied")
             print("> ", end="", flush=True)
 
         # Run gateway in background
