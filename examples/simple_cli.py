@@ -100,7 +100,7 @@ async def handle_command(client: stackcoin.Client, line: str):
         since = int(parts[1]) if len(parts) > 1 else 0
         events = await client.get_events(since_id=since)
         for e in events[:10]:
-            print(f"  [{e['id']}] {e['type']}: {e['data']}")
+            print(f"  [{e.id}] {e.type}: {e.data}")
         print(f"({len(events)} total)")
 
     else:
