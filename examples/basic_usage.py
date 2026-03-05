@@ -7,7 +7,7 @@ import stackcoin
 
 
 async def main(token: str, base_url: str):
-    async with stackcoin.Client(base_url=base_url, token=token) as client:
+    async with stackcoin.Client(token, base_url=base_url) as client:
         # Who am I?
         me = await client.get_me()
         print(f"Logged in as {me.username} with balance {me.balance} STK")
@@ -43,5 +43,7 @@ if __name__ == "__main__":
             print("Token is required")
             exit(1)
 
+    # Can be omitted to hit production (https://stackcoin.world).
+    # Set STACKCOIN_BASE_URL for local development, e.g. http://localhost:4000
     base_url = os.getenv("STACKCOIN_BASE_URL", "https://stackcoin.world")
     asyncio.run(main(token, base_url))

@@ -16,10 +16,7 @@ class Gateway:
 
     Usage::
 
-        gateway = stackcoin.Gateway(
-            ws_url="ws://localhost:4000/ws",
-            token="...",
-        )
+        gateway = stackcoin.Gateway(token="...")
 
         @gateway.on("request.accepted")
         async def handle_accepted(event: stackcoin.RequestAcceptedEvent):
@@ -30,12 +27,12 @@ class Gateway:
 
     def __init__(
         self,
-        ws_url: str,
         token: str,
+        *,
+        ws_url: str = "wss://stackcoin.world/ws",
         last_event_id: int = 0,
         on_event_id: Callable[[int], None] | None = None,
     ):
-        # ws_url should be the full websocket URL like "ws://localhost:4000/ws"
         self._ws_url = ws_url.rstrip("/")
         self._token = token
         self._handlers: dict[str, list[EventHandler]] = {}
