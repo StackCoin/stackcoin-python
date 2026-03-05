@@ -35,16 +35,16 @@ class Client:
 
     Usage::
 
-        async with Client("https://stackcoin.example.com", token="sk-...") as client:
+        async with Client(token="sk-...") as client:
             me = await client.get_me()
             print(me.username, me.balance)
     """
 
     def __init__(
         self,
-        base_url: str,
         token: str,
         *,
+        base_url: str = "https://stackcoin.world",
         timeout: float = 10.0,
     ) -> None:
         self._http = httpx.AsyncClient(

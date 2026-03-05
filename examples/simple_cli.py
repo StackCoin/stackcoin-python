@@ -126,18 +126,20 @@ async def main():
             print("Token is required")
             return
 
+    # Can be omitted to hit production (https://stackcoin.world).
+    # Set STACKCOIN_BASE_URL for local development, e.g. http://localhost:4000
     base_url = os.getenv("STACKCOIN_BASE_URL", "https://stackcoin.world")
     ws_url = os.getenv("STACKCOIN_WS_URL",
                         base_url.replace("https://", "wss://")
                                 .replace("http://", "ws://")
                         + "/ws")
 
-    async with stackcoin.Client(base_url=base_url, token=token) as client:
+    async with stackcoin.Client(token, base_url=base_url) as client:
         me = await client.get_me()
         print(f"Connected to {base_url} as {me.username} ({me.balance} STK)")
 
         # Set up gateway for live events
-        gateway = stackcoin.Gateway(ws_url=ws_url, token=token)
+        gateway = stackcoin.Gateway(token, ws_url=ws_url)
 
         @gateway.on("transfer.completed")
         async def on_transfer(event: stackcoin.TransferCompletedEvent):
