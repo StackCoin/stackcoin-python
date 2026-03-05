@@ -130,7 +130,7 @@ async def main():
     ws_url = os.getenv("STACKCOIN_WS_URL",
                         base_url.replace("https://", "wss://")
                                 .replace("http://", "ws://")
-                        + "/bot/websocket")
+                        + "/ws")
 
     async with stackcoin.Client(base_url=base_url, token=token) as client:
         me = await client.get_me()
