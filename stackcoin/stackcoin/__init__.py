@@ -1,4 +1,4 @@
-"""StackCoin Python SDK."""
+"""StackCoin Python library."""
 
 from .client import AnyEvent, Client
 from .errors import StackCoinError
