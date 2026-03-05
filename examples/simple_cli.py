@@ -1,211 +1,121 @@
+"""Interactive StackCoin bot REPL with live gateway events.
+
+Demonstrates the REST client and WebSocket gateway working together:
+the REPL handles commands while the gateway prints real-time events
+in the background.
+"""
+
 import asyncio
 import os
-from stackcoin_python import AuthenticatedClient
-from stackcoin_python.types import Unset
-from stackcoin_python.models import (
-    CreateRequestParams,
-    SendStkParams,
-    BalanceResponse,
-    CreateRequestResponse,
-    RequestsResponse,
-    TransactionsResponse,
-    UsersResponse,
-    SendStkResponse,
-    RequestActionResponse,
-)
-from stackcoin_python.api.default import (
-    stackcoin_self_balance,
-    stackcoin_user_balance,
-    stackcoin_users,
-    stackcoin_send_stk,
-    stackcoin_create_request,
-    stackcoin_requests,
-    stackcoin_transactions,
-    stackcoin_accept_request,
-    stackcoin_deny_request,
-)
+import sys
+
+import stackcoin
 
 
 def print_help():
     print("\nAvailable commands:")
-    print("  balance - Get your bot's balance")
-    print("  user <user_id> - Get a user's balance")
-    print("  users [username] - List/search users")
-    print("  send <user_id> <amount> [label] - Send tokens to a user")
-    print("  request <user_id> <amount> [label] - Request tokens from a user")
-    print("  requests [requester|responder] - List payment requests")
-    print("  transactions [from_user_id] [to_user_id] - List transactions")
-    print("  accept <request_id> - Accept a payment request")
-    print("  deny <request_id> - Deny a payment request")
-    print("  help - Show this help")
-    print("  quit - Exit the REPL")
+    print("  balance              - Get your bot's balance")
+    print("  user <id>            - Get a user by ID")
+    print("  users [discord_id]   - List/search users")
+    print("  send <id> <amt> [label]    - Send STK to a user")
+    print("  request <id> <amt> [label] - Request STK from a user")
+    print("  requests [status]    - List payment requests")
+    print("  accept <request_id>  - Accept a payment request")
+    print("  deny <request_id>    - Deny a payment request")
+    print("  transactions         - List recent transactions")
+    print("  events [since_id]    - List recent events (REST)")
+    print("  help                 - Show this help")
+    print("  quit                 - Exit")
 
 
-async def run_repl(client):
-    print("StackCoin Bot REPL - Type 'help' for commands")
+async def handle_command(client: stackcoin.Client, line: str):
+    parts = line.split()
+    cmd = parts[0].lower()
 
+    if cmd == "help":
+        print_help()
+
+    elif cmd == "balance":
+        me = await client.get_me()
+        print(f"{me.username}: {me.balance} STK")
+
+    elif cmd == "user" and len(parts) >= 2:
+        user = await client.get_user(int(parts[1]))
+        flags = []
+        if user.admin:
+            flags.append("ADMIN")
+        if user.banned:
+            flags.append("BANNED")
+        flag_str = f" [{', '.join(flags)}]" if flags else ""
+        print(f"#{user.id} {user.username}: {user.balance} STK{flag_str}")
+
+    elif cmd == "users":
+        discord_id = parts[1] if len(parts) > 1 else None
+        users = await client.get_users(discord_id=discord_id)
+        for u in users[:20]:
+            print(f"  #{u.id} {u.username}: {u.balance} STK")
+        print(f"({len(users)} total)")
+
+    elif cmd == "send" and len(parts) >= 3:
+        user_id = int(parts[1])
+        amount = int(parts[2])
+        label = " ".join(parts[3:]) or None
+        result = await client.send(user_id, amount, label=label)
+        print(f"Sent {result.amount} STK (txn #{result.transaction_id}). "
+              f"Your balance: {result.from_new_balance} STK")
+
+    elif cmd == "request" and len(parts) >= 3:
+        user_id = int(parts[1])
+        amount = int(parts[2])
+        label = " ".join(parts[3:]) or None
+        result = await client.create_request(user_id, amount, label=label)
+        print(f"Request #{result.request_id} for {result.amount} STK "
+              f"from {result.responder.username} ({result.status})")
+
+    elif cmd == "requests":
+        status = parts[1] if len(parts) > 1 else None
+        reqs = await client.get_requests(status=status)
+        for r in reqs[:10]:
+            print(f"  #{r.id} {r.requester.username} -> {r.responder.username}: "
+                  f"{r.amount} STK ({r.status})")
+        print(f"({len(reqs)} total)")
+
+    elif cmd == "accept" and len(parts) >= 2:
+        result = await client.accept_request(int(parts[1]))
+        print(f"Accepted request #{result.request_id} -> {result.status}")
+
+    elif cmd == "deny" and len(parts) >= 2:
+        result = await client.deny_request(int(parts[1]))
+        print(f"Denied request #{result.request_id} -> {result.status}")
+
+    elif cmd == "transactions":
+        txns = await client.get_transactions()
+        for t in txns[:10]:
+            label_str = f" ({t.label})" if t.label else ""
+            print(f"  #{t.id} {t.from_.username} -> {t.to.username}: "
+                  f"{t.amount} STK{label_str}")
+        print(f"({len(txns)} total)")
+
+    elif cmd == "events":
+        since = int(parts[1]) if len(parts) > 1 else 0
+        events = await client.get_events(since_id=since)
+        for e in events[:10]:
+            print(f"  [{e['id']}] {e['type']}: {e['data']}")
+        print(f"({len(events)} total)")
+
+    else:
+        print("Unknown command. Type 'help' for available commands.")
+
+
+async def read_stdin_lines(queue: asyncio.Queue[str | None]):
+    """Read lines from stdin in a thread and push them into a queue."""
+    loop = asyncio.get_event_loop()
     while True:
-        try:
-            command = input("\n> ").strip()
-            if not command:
-                continue
-
-            parts = command.split()
-            cmd = parts[0].lower()
-
-            if cmd == "quit":
-                break
-            elif cmd == "help":
-                print_help()
-            elif cmd == "balance":
-                balance = await stackcoin_self_balance.asyncio(client=client)
-                if not isinstance(balance, BalanceResponse):
-                    print("Error: Failed to get balance")
-                    continue
-                print(f"Bot: {balance.username}, Balance: {balance.balance} STK")
-            elif cmd == "user" and len(parts) >= 2:
-                user_id = int(parts[1])
-                balance = await stackcoin_user_balance.asyncio(
-                    client=client, user_id=user_id
-                )
-                if not isinstance(balance, BalanceResponse):
-                    print("Error: Failed to get user balance")
-                    continue
-                print(f"User: {balance.username}, Balance: {balance.balance} STK")
-            elif cmd == "users":
-                username_filter = parts[1] if len(parts) > 1 else Unset()
-                users_response = await stackcoin_users.asyncio(
-                    client=client, username=username_filter
-                )
-                if not isinstance(users_response, UsersResponse) or not isinstance(
-                    users_response.users, list
-                ):
-                    print("Error: Failed to get users")
-                    continue
-                count = 0
-                print("Users:")
-                for user in users_response.users:
-                    status_flags = []
-                    if user.admin:
-                        status_flags.append("ADMIN")
-                    if user.banned:
-                        status_flags.append("BANNED")
-                    status_str = f" [{', '.join(status_flags)}]" if status_flags else ""
-                    print(
-                        f"  #{user.id}: {user.username} - {user.balance} STK{status_str}"
-                    )
-                    count += 1
-                    if count >= 20:
-                        break
-                print(f"Showing first {count} users")
-            elif cmd == "send" and len(parts) >= 3:
-                user_id = int(parts[1])
-                amount = int(parts[2])
-                label = " ".join(parts[3:]) if len(parts) > 3 else None
-                result = await stackcoin_send_stk.asyncio(
-                    client=client,
-                    user_id=user_id,
-                    body=SendStkParams(amount=amount, label=label),
-                )
-                if not isinstance(result, SendStkResponse):
-                    print("Error: Failed to send STK")
-                    continue
-                print(
-                    f"Sent {result.amount} STK! Your new balance: {result.from_new_balance}"
-                )
-            elif cmd == "request" and len(parts) >= 3:
-                user_id = int(parts[1])
-                amount = int(parts[2])
-                label = " ".join(parts[3:]) if len(parts) > 3 else None
-                result = await stackcoin_create_request.asyncio(
-                    client=client,
-                    user_id=user_id,
-                    body=CreateRequestParams(amount=amount, label=label),
-                )
-                if not isinstance(result, CreateRequestResponse):
-                    print("Error: Failed to create request")
-                    continue
-                print(
-                    f"Created request {result.request_id} for {result.amount} STK from {result.responder.username}"
-                )
-            elif cmd == "requests":
-                role = parts[1] if len(parts) > 1 else "requester"
-                requests_response = await stackcoin_requests.asyncio(
-                    client=client, role=role
-                )
-                if not isinstance(
-                    requests_response, RequestsResponse
-                ) or not isinstance(requests_response.requests, list):
-                    print("Error: Failed to get requests")
-                    continue
-                count = 0
-                print(f"Requests as {role}:")
-                for req in requests_response.requests:
-                    if role == "requester":
-                        print(
-                            f"  #{req.id}: {req.amount} STK to {req.responder.username} - {req.status}"
-                        )
-                    else:
-                        print(
-                            f"  #{req.id}: {req.amount} STK from {req.requester.username} - {req.status}"
-                        )
-                    count += 1
-                    if count >= 10:
-                        break
-                print(f"Showing first {count} requests")
-            elif cmd == "transactions":
-                from_user_id = (
-                    int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else Unset()
-                )
-                to_user_id = (
-                    int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else Unset()
-                )
-                transactions_response = await stackcoin_transactions.asyncio(
-                    client=client, from_user_id=from_user_id, to_user_id=to_user_id
-                )
-                if not isinstance(
-                    transactions_response, TransactionsResponse
-                ) or not isinstance(transactions_response.transactions, list):
-                    print("Error: Failed to get transactions")
-                    continue
-                count = 0
-                print("Recent transactions:")
-                for txn in transactions_response.transactions:
-                    label_str = f" ({txn.label})" if txn.label else ""
-                    print(
-                        f"  #{txn.id}: {txn.from_.username} → {txn.to.username} {txn.amount} STK{label_str} at {txn.time}"
-                    )
-                    count += 1
-                    if count >= 10:
-                        break
-                print(f"Showing first {count} transactions")
-            elif cmd == "accept" and len(parts) >= 2:
-                request_id = int(parts[1])
-                result = await stackcoin_accept_request.asyncio(
-                    client=client, request_id=request_id
-                )
-                if not isinstance(result, RequestActionResponse):
-                    print("Error: Failed to accept request")
-                    continue
-                print(f"Accepted request {result.request_id}, status: {result.status}")
-            elif cmd == "deny" and len(parts) >= 2:
-                request_id = int(parts[1])
-                result = await stackcoin_deny_request.asyncio(
-                    client=client, request_id=request_id
-                )
-                if not isinstance(result, RequestActionResponse):
-                    print("Error: Failed to deny request")
-                    continue
-                print(f"Denied request {result.request_id}, status: {result.status}")
-            else:
-                print("Unknown command. Type 'help' for available commands.")
-
-        except KeyboardInterrupt:
+        line = await loop.run_in_executor(None, sys.stdin.readline)
+        if not line:
+            await queue.put(None)
             break
-        except ValueError as e:
-            print(f"Invalid input: {e}")
-        except Exception as e:
-            print(f"Error: {e}")
+        await queue.put(line.strip())
 
 
 async def main():
@@ -217,11 +127,79 @@ async def main():
             return
 
     base_url = os.getenv("STACKCOIN_BASE_URL", "https://stackcoin.world")
+    ws_url = os.getenv("STACKCOIN_WS_URL",
+                        base_url.replace("https://", "wss://")
+                                .replace("http://", "ws://")
+                        + "/bot/websocket")
 
-    client = AuthenticatedClient(base_url=base_url, token=token)
-    async with client as client:
-        print(f"Connected to {base_url}")
-        await run_repl(client)
+    async with stackcoin.Client(base_url=base_url, token=token) as client:
+        me = await client.get_me()
+        print(f"Connected to {base_url} as {me.username} ({me.balance} STK)")
+
+        # Set up gateway for live events
+        gateway = stackcoin.Gateway(ws_url=ws_url, token=token)
+
+        @gateway.on("transfer.completed")
+        async def on_transfer(event: stackcoin.Event):
+            d = event.data
+            role = d.get("role", "?")
+            if role == "sender":
+                print(f"\n  [event] Sent {d['amount']} STK to user #{d['to_id']}")
+            else:
+                print(f"\n  [event] Received {d['amount']} STK from user #{d['from_id']}")
+            print("> ", end="", flush=True)
+
+        @gateway.on("request.created")
+        async def on_request_created(event: stackcoin.Event):
+            d = event.data
+            print(f"\n  [event] New request #{d['request_id']} for {d['amount']} STK")
+            print("> ", end="", flush=True)
+
+        @gateway.on("request.accepted")
+        async def on_request_accepted(event: stackcoin.Event):
+            d = event.data
+            print(f"\n  [event] Request #{d['request_id']} accepted")
+            print("> ", end="", flush=True)
+
+        @gateway.on("request.denied")
+        async def on_request_denied(event: stackcoin.Event):
+            d = event.data
+            print(f"\n  [event] Request #{d['request_id']} denied")
+            print("> ", end="", flush=True)
+
+        # Run gateway in background
+        gateway_task = asyncio.create_task(gateway.connect())
+
+        # REPL loop using async stdin reader
+        input_queue: asyncio.Queue[str | None] = asyncio.Queue()
+        reader_task = asyncio.create_task(read_stdin_lines(input_queue))
+
+        print_help()
+        print("\nLive events from the gateway will appear inline.\n")
+
+        try:
+            while True:
+                print("> ", end="", flush=True)
+                line = await input_queue.get()
+                if line is None:
+                    break
+                if not line:
+                    continue
+                if line.lower() == "quit":
+                    break
+                try:
+                    await handle_command(client, line)
+                except stackcoin.StackCoinError as e:
+                    print(f"API error: {e}")
+                except ValueError as e:
+                    print(f"Invalid input: {e}")
+        except KeyboardInterrupt:
+            pass
+        finally:
+            gateway.stop()
+            gateway_task.cancel()
+            reader_task.cancel()
+            print("\nBye!")
 
 
 if __name__ == "__main__":
