@@ -13,8 +13,12 @@ async def main(token: str, base_url: str):
         print(f"Logged in as {me.username} with balance {me.balance} STK")
 
         # Create a request
-        req = await client.create_request(to_user_id=2, amount=100, label="pay up buddy")
-        print(f"Created request #{req.request_id} to {req.responder.username} for {req.amount} STK")
+        req = await client.create_request(
+            to_user_id=2, amount=100, label="pay up buddy"
+        )
+        print(
+            f"Created request #{req.request_id} to {req.responder.username} for {req.amount} STK"
+        )
 
         # List pending requests
         requests = await client.get_requests()
@@ -26,7 +30,9 @@ async def main(token: str, base_url: str):
         transactions = await client.get_transactions()
         print(f"\n{len(transactions)} transaction(s):")
         for txn in transactions:
-            print(f"  #{txn.id} {txn.from_.username} -> {txn.to.username}: {txn.amount} STK")
+            print(
+                f"  #{txn.id} {txn.from_.username} -> {txn.to.username}: {txn.amount} STK"
+            )
 
         # List users
         users = await client.get_users()

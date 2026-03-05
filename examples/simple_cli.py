@@ -61,23 +61,29 @@ async def handle_command(client: stackcoin.Client, line: str):
         amount = int(parts[2])
         label = " ".join(parts[3:]) or None
         result = await client.send(user_id, amount, label=label)
-        print(f"Sent {result.amount} STK (txn #{result.transaction_id}). "
-              f"Your balance: {result.from_new_balance} STK")
+        print(
+            f"Sent {result.amount} STK (txn #{result.transaction_id}). "
+            f"Your balance: {result.from_new_balance} STK"
+        )
 
     elif cmd == "request" and len(parts) >= 3:
         user_id = int(parts[1])
         amount = int(parts[2])
         label = " ".join(parts[3:]) or None
         result = await client.create_request(user_id, amount, label=label)
-        print(f"Request #{result.request_id} for {result.amount} STK "
-              f"from {result.responder.username} ({result.status})")
+        print(
+            f"Request #{result.request_id} for {result.amount} STK "
+            f"from {result.responder.username} ({result.status})"
+        )
 
     elif cmd == "requests":
         status = parts[1] if len(parts) > 1 else None
         reqs = await client.get_requests(status=status)
         for r in reqs[:10]:
-            print(f"  #{r.id} {r.requester.username} -> {r.responder.username}: "
-                  f"{r.amount} STK ({r.status})")
+            print(
+                f"  #{r.id} {r.requester.username} -> {r.responder.username}: "
+                f"{r.amount} STK ({r.status})"
+            )
         print(f"({len(reqs)} total)")
 
     elif cmd == "accept" and len(parts) >= 2:
@@ -92,8 +98,10 @@ async def handle_command(client: stackcoin.Client, line: str):
         txns = await client.get_transactions()
         for t in txns[:10]:
             label_str = f" ({t.label})" if t.label else ""
-            print(f"  #{t.id} {t.from_.username} -> {t.to.username}: "
-                  f"{t.amount} STK{label_str}")
+            print(
+                f"  #{t.id} {t.from_.username} -> {t.to.username}: "
+                f"{t.amount} STK{label_str}"
+            )
         print(f"({len(txns)} total)")
 
     elif cmd == "events":
@@ -129,10 +137,10 @@ async def main():
     # Can be omitted to hit production (https://stackcoin.world).
     # Set STACKCOIN_BASE_URL for local development, e.g. http://localhost:4000
     base_url = os.getenv("STACKCOIN_BASE_URL", "https://stackcoin.world")
-    ws_url = os.getenv("STACKCOIN_WS_URL",
-                        base_url.replace("https://", "wss://")
-                                .replace("http://", "ws://")
-                        + "/ws")
+    ws_url = os.getenv(
+        "STACKCOIN_WS_URL",
+        base_url.replace("https://", "wss://").replace("http://", "ws://") + "/ws",
+    )
 
     async with stackcoin.Client(token, base_url=base_url) as client:
         me = await client.get_me()
@@ -144,14 +152,20 @@ async def main():
         @gateway.on("transfer.completed")
         async def on_transfer(event: stackcoin.TransferCompletedEvent):
             if event.data.role == "sender":
-                print(f"\n  [event] Sent {event.data.amount} STK to user #{event.data.to_id}")
+                print(
+                    f"\n  [event] Sent {event.data.amount} STK to user #{event.data.to_id}"
+                )
             else:
-                print(f"\n  [event] Received {event.data.amount} STK from user #{event.data.from_id}")
+                print(
+                    f"\n  [event] Received {event.data.amount} STK from user #{event.data.from_id}"
+                )
             print("> ", end="", flush=True)
 
         @gateway.on("request.created")
         async def on_request_created(event: stackcoin.RequestCreatedEvent):
-            print(f"\n  [event] New request #{event.data.request_id} for {event.data.amount} STK")
+            print(
+                f"\n  [event] New request #{event.data.request_id} for {event.data.amount} STK"
+            )
             print("> ", end="", flush=True)
 
         @gateway.on("request.accepted")
