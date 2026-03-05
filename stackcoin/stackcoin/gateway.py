@@ -2,11 +2,11 @@
 
 import asyncio
 import json
-from typing import Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from .client import AnyEvent
 from .models import Event
-
 
 EventHandler = Callable[[AnyEvent], Awaitable[None]]
 
