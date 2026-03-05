@@ -11,15 +11,23 @@ from .models import (
     CreateRequestResponse,
     DiscordGuild,
     DiscordGuildsResponse,
+    EventsResponse,
     Request,
+    RequestAcceptedEvent,
     RequestActionResponse,
+    RequestCreatedEvent,
+    RequestDeniedEvent,
     RequestsResponse,
     SendStkResponse,
     Transaction,
     TransactionsResponse,
+    TransferCompletedEvent,
     User,
     UsersResponse,
 )
+
+# Union of all concrete event types (unwrapped from Event RootModel)
+AnyEvent = TransferCompletedEvent | RequestCreatedEvent | RequestAcceptedEvent | RequestDeniedEvent
 
 
 class Client:
@@ -198,18 +206,15 @@ class Client:
 
     # -- events ----------------------------------------------------------- #
 
-    async def get_events(self, *, since_id: int = 0) -> list[dict[str, Any]]:
-        """Return events since the given ID.
-
-        Events are not yet in the OpenAPI spec, so this returns raw dicts.
-        """
+    async def get_events(self, *, since_id: int = 0) -> list[AnyEvent]:
+        """Return typed events since the given ID."""
         params: dict[str, Any] = {}
         if since_id:
             params["since_id"] = since_id
         resp = await self._http.get("/api/events", params=params)
         self._raise_for_error(resp)
-        data = resp.json()
-        return data.get("events", data) if isinstance(data, dict) else data
+        wrapper = EventsResponse.model_validate(resp.json())
+        return [e.root for e in wrapper.events]
 
     # -- discord guilds --------------------------------------------------- #
 
