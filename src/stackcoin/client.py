@@ -202,7 +202,7 @@ class Client:
 
         while True:
             params: dict[str, Any] = {}
-            if cursor:
+            if cursor > 0:
                 params["since_id"] = cursor
             resp = await self._http.get("/api/events", params=params)
             self._raise_for_error(resp)

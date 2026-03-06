@@ -69,6 +69,21 @@ gateway = stackcoin.Gateway(
 - `examples/basic_usage.py` -- REST client basics (balance, requests, transactions)
 - `examples/simple_cli.py` -- interactive REPL with live gateway events
 
+## Testing
+
+Tests for this library live in the main
+[StackCoin/StackCoin](https://github.com/StackCoin/StackCoin) repository as
+end-to-end tests that boot a real StackCoin server:
+
+```sh
+cd /path/to/StackCoin/test/e2e
+uv sync
+uv run pytest
+```
+
+The E2E suite covers the REST client, WebSocket gateway, event pagination, and
+the [LuckyPot](https://github.com/StackCoin/LuckyPot) bot integration.
+
 ## Development
 
 Models are generated from the StackCoin OpenAPI spec using `datamodel-codegen`:
@@ -77,4 +92,4 @@ Models are generated from the StackCoin OpenAPI spec using `datamodel-codegen`:
 STACKCOIN_ROOT=/path/to/StackCoin just generate
 ```
 
-This regenerates `stackcoin/stackcoin/models.py` from `openapi.json`.
+This regenerates `src/stackcoin/models.py` from `openapi.json`.

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 from .client import AnyEvent, Client
 from .models import Event
+
+logger = logging.getLogger(__name__)
 
 # Internal handler type — accepts the full union at runtime.
 EventHandler = Callable[[AnyEvent], Awaitable[None]]
@@ -85,6 +88,7 @@ class Gateway:
         :class:`TooManyMissedEventsError`.
         """
         import websockets
+        import websockets.exceptions
 
         from .errors import TooManyMissedEventsError
 
@@ -111,8 +115,14 @@ class Gateway:
                     raise  # No client — caller must handle catch-up
                 await self._catch_up_via_rest()
                 # Loop back to reconnect with updated cursor
-            except Exception:
+            except (
+                OSError,
+                ConnectionError,
+                asyncio.TimeoutError,
+                websockets.exceptions.WebSocketException,
+            ) as exc:
                 if self._running:
+                    logger.warning("Gateway connection lost: %s. Reconnecting in 5s...", exc)
                     await asyncio.sleep(5)
 
     async def _catch_up_via_rest(self) -> None:
@@ -121,7 +131,8 @@ class Gateway:
         Dispatches each event through the registered handlers, exactly
         as if it arrived over the WebSocket.
         """
-        assert self._client is not None
+        if self._client is None:
+            raise RuntimeError("Cannot catch up via REST without a client")
         events = await self._client.get_events(since_id=self._last_event_id)
         for event in events:
             await self._dispatch_event(event)
@@ -135,13 +146,13 @@ class Gateway:
             try:
                 await handler(typed_event)
             except Exception:
-                pass
+                logger.exception("Error in %s handler for event %s", typed_event.type, typed_event.id)
 
         if typed_event.id > 0 and self._on_event_id:
             try:
                 self._on_event_id(typed_event.id)
             except Exception:
-                pass
+                logger.exception("Error in on_event_id callback for event %s", typed_event.id)
 
     async def _join_channel(self, ws: Any) -> None:
         """Join the user:self channel with event replay."""
@@ -196,5 +207,7 @@ class Gateway:
             await self._dispatch_event(typed_event)
 
     def stop(self) -> None:
-        """Signal the gateway to stop."""
+        """Signal the gateway to stop and close the WebSocket connection."""
         self._running = False
+        if self._ws is not None:
+            asyncio.ensure_future(self._ws.close())
