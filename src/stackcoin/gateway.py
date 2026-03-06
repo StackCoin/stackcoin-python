@@ -26,19 +26,19 @@ class Gateway:
 
     Usage::
 
-        async with stackcoin.Client(token="...") as client:
-            gateway = stackcoin.Gateway(token="...", client=client)
+        gateway = stackcoin.Gateway(token="...")
 
-            @gateway.on("request.accepted")
-            async def handle_accepted(event: stackcoin.RequestAcceptedEvent):
-                print(event.data.request_id)
+        @gateway.on("request.accepted")
+        async def handle_accepted(event: stackcoin.RequestAcceptedEvent):
+            print(event.data.request_id)
 
-            await gateway.connect()
+        await gateway.connect()
 
-    If a ``client`` is provided and the bot has been offline too long (>100
-    missed events), the gateway automatically catches up via the REST API
-    before reconnecting.  Without a ``client``, the error is raised to the
-    caller.
+    By default, the gateway receives only live events. Pass ``last_event_id``
+    to replay missed events from a cursor position. If more than 100 events
+    were missed and a ``client`` is provided, the gateway automatically catches
+    up via the REST API before reconnecting. Without a ``client``, a
+    ``TooManyMissedEventsError`` is raised.
     """
 
     def __init__(
@@ -47,7 +47,7 @@ class Gateway:
         *,
         ws_url: str = "wss://stackcoin.world/ws",
         client: Client | None = None,
-        last_event_id: int = 0,
+        last_event_id: int | None = None,
         on_event_id: Callable[[int], None] | None = None,
     ):
         self._ws_url = ws_url.rstrip("/")
@@ -61,7 +61,7 @@ class Gateway:
         self._ref_counter = 0
 
     @property
-    def last_event_id(self) -> int:
+    def last_event_id(self) -> int | None:
         return self._last_event_id
 
     def on(self, event_type: str) -> Callable[[_F], _F]:
@@ -133,13 +133,15 @@ class Gateway:
         """
         if self._client is None:
             raise RuntimeError("Cannot catch up via REST without a client")
-        events = await self._client.get_events(since_id=self._last_event_id)
+        # _last_event_id is always an int here — TooManyMissedEventsError only
+        # fires when a last_event_id was sent in the join payload.
+        events = await self._client.get_events(since_id=self._last_event_id or 0)
         for event in events:
             await self._dispatch_event(event)
 
     async def _dispatch_event(self, typed_event: AnyEvent) -> None:
         """Dispatch a typed event to registered handlers and update the cursor."""
-        if typed_event.id > self._last_event_id:
+        if self._last_event_id is None or typed_event.id > self._last_event_id:
             self._last_event_id = typed_event.id
 
         for handler in self._handlers.get(typed_event.type, []):
@@ -159,13 +161,16 @@ class Gateway:
         from .errors import TooManyMissedEventsError
 
         self._ref_counter += 1
+        join_payload: dict[str, Any] = {}
+        if self._last_event_id is not None:
+            join_payload["last_event_id"] = self._last_event_id
         join_msg = json.dumps(
             [
                 None,
                 str(self._ref_counter),
                 "user:self",
                 "phx_join",
-                {"last_event_id": self._last_event_id},
+                join_payload,
             ]
         )
         await ws.send(join_msg)
