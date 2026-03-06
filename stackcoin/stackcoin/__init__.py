@@ -1,7 +1,7 @@
 """StackCoin Python library."""
 
 from .client import AnyEvent, Client
-from .errors import StackCoinError
+from .errors import StackCoinError, TooManyMissedEventsError
 from .gateway import Gateway
 from .models import (
     Event,
@@ -27,6 +27,7 @@ __all__ = [
     "RequestDeniedData",
     "RequestDeniedEvent",
     "StackCoinError",
+    "TooManyMissedEventsError",
     "TransferCompletedData",
     "TransferCompletedEvent",
 ]
