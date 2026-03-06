@@ -146,8 +146,10 @@ async def main():
         me = await client.get_me()
         print(f"Connected to {base_url} as {me.username} ({me.balance} STK)")
 
-        # Set up gateway for live events
-        gateway = stackcoin.Gateway(token, ws_url=ws_url)
+        # Set up gateway for live events.
+        # Passing client= enables automatic REST catch-up if >100 events
+        # were missed while offline.
+        gateway = stackcoin.Gateway(token, ws_url=ws_url, client=client)
 
         @gateway.on("transfer.completed")
         async def on_transfer(event: stackcoin.TransferCompletedEvent):

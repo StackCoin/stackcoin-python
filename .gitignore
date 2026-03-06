@@ -1,7 +1,29 @@
 *.sh
 
-venv/
+# Python
+__pycache__/
+*.egg-info/
 dist/
 build/
-__pycache__
-*.egg-info/
+
+# Environments
+.venv/
+venv/
+.env
+
+# Testing
+.pytest_cache/
+coverage.xml
+.coverage
+
+# Tools
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE
+.idea/
+
+# pyenv
+.python-version

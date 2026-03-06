@@ -5,15 +5,17 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any, TypeVar
 
-from .client import AnyEvent
+from .client import AnyEvent, Client
 from .models import Event
 
-if TYPE_CHECKING:
-    from .client import Client
-
+# Internal handler type — accepts the full union at runtime.
 EventHandler = Callable[[AnyEvent], Awaitable[None]]
+
+# TypeVar for the @gateway.on() decorator so it preserves the caller's
+# narrowed signature (e.g. async def f(event: RequestAcceptedEvent)).
+_F = TypeVar("_F", bound=Callable[..., Awaitable[None]])
 
 
 class Gateway:
@@ -59,11 +61,11 @@ class Gateway:
     def last_event_id(self) -> int:
         return self._last_event_id
 
-    def on(self, event_type: str) -> Callable[[EventHandler], EventHandler]:
+    def on(self, event_type: str) -> Callable[[_F], _F]:
         """Decorator to register an event handler."""
 
-        def decorator(func: EventHandler) -> EventHandler:
-            self.register_handler(event_type, func)
+        def decorator(func: _F) -> _F:
+            self.register_handler(event_type, func)  # type: ignore[arg-type]
             return func
 
         return decorator
