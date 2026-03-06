@@ -30,38 +30,43 @@ asyncio.run(main())
 
 ## Gateway (real-time events)
 
-Pass a `client` to the Gateway so it can automatically catch up on missed events
-via the REST API if the bot has been offline too long (>100 events). Without a
-client, a `TooManyMissedEventsError` is raised and you must handle catch-up
-yourself.
-
 ```python
 import stackcoin
 
+gateway = stackcoin.Gateway(token="...")
+
+@gateway.on("transfer.completed")
+async def on_transfer(event: stackcoin.TransferCompletedEvent):
+    print(f"Transfer of {event.data.amount} STK from #{event.data.from_id} to #{event.data.to_id}")
+
+@gateway.on("request.accepted")
+async def on_accepted(event: stackcoin.RequestAcceptedEvent):
+    print(f"Request #{event.data.request_id} accepted")
+
+await gateway.connect()
+```
+
+## Catching up on missed events
+
+If your bot persists its cursor position and reconnects with a `last_event_id`,
+the server replays up to 100 missed events. If more than 100 were missed, the
+join is rejected — pass a `client` so the Gateway can automatically catch up
+via the REST API. Without a client, a `TooManyMissedEventsError` is raised.
+
+```python
 async with stackcoin.Client(token="...") as client:
-    gateway = stackcoin.Gateway(token="...", client=client)
+    gateway = stackcoin.Gateway(
+        token="...",
+        client=client,
+        last_event_id=saved_cursor,
+        on_event_id=lambda eid: save_cursor(eid),
+    )
 
     @gateway.on("transfer.completed")
     async def on_transfer(event: stackcoin.TransferCompletedEvent):
-        print(f"Transfer of {event.data.amount} STK from #{event.data.from_id} to #{event.data.to_id}")
-
-    @gateway.on("request.accepted")
-    async def on_accepted(event: stackcoin.RequestAcceptedEvent):
-        print(f"Request #{event.data.request_id} accepted")
+        ...
 
     await gateway.connect()
-```
-
-The Gateway also accepts `last_event_id` to resume from a known cursor, and
-`on_event_id` as a callback to persist the cursor position after each event:
-
-```python
-gateway = stackcoin.Gateway(
-    token="...",
-    client=client,
-    last_event_id=saved_cursor,
-    on_event_id=lambda eid: save_cursor(eid),
-)
 ```
 
 ## Examples
