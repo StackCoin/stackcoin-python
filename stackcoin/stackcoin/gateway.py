@@ -1,12 +1,17 @@
 """StackCoin WebSocket Gateway client."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .client import AnyEvent
 from .models import Event
+
+if TYPE_CHECKING:
+    from .client import Client
 
 EventHandler = Callable[[AnyEvent], Awaitable[None]]
 
@@ -16,13 +21,19 @@ class Gateway:
 
     Usage::
 
-        gateway = stackcoin.Gateway(token="...")
+        async with stackcoin.Client(token="...") as client:
+            gateway = stackcoin.Gateway(token="...", client=client)
 
-        @gateway.on("request.accepted")
-        async def handle_accepted(event: stackcoin.RequestAcceptedEvent):
-            print(event.data.request_id)
+            @gateway.on("request.accepted")
+            async def handle_accepted(event: stackcoin.RequestAcceptedEvent):
+                print(event.data.request_id)
 
-        await gateway.connect()
+            await gateway.connect()
+
+    If a ``client`` is provided and the bot has been offline too long (>100
+    missed events), the gateway automatically catches up via the REST API
+    before reconnecting.  Without a ``client``, the error is raised to the
+    caller.
     """
 
     def __init__(
@@ -30,11 +41,13 @@ class Gateway:
         token: str,
         *,
         ws_url: str = "wss://stackcoin.world/ws",
+        client: Client | None = None,
         last_event_id: int = 0,
         on_event_id: Callable[[int], None] | None = None,
     ):
         self._ws_url = ws_url.rstrip("/")
         self._token = token
+        self._client = client
         self._handlers: dict[str, list[EventHandler]] = {}
         self._last_event_id = last_event_id
         self._on_event_id = on_event_id  # callback to persist cursor position
@@ -62,7 +75,13 @@ class Gateway:
         self._handlers[event_type].append(handler)
 
     async def connect(self) -> None:
-        """Connect and listen for events. Reconnects automatically on failure."""
+        """Connect and listen for events. Reconnects automatically on failure.
+
+        If the gateway rejects a join because too many events were missed
+        and a ``client`` was provided, the gateway catches up via the REST
+        API and reconnects.  Without a ``client``, raises
+        :class:`TooManyMissedEventsError`.
+        """
         import websockets
 
         from .errors import TooManyMissedEventsError
@@ -86,10 +105,41 @@ class Gateway:
                         heartbeat_task.cancel()
 
             except TooManyMissedEventsError:
-                raise  # Don't retry — caller must catch up via REST
+                if self._client is None:
+                    raise  # No client — caller must handle catch-up
+                await self._catch_up_via_rest()
+                # Loop back to reconnect with updated cursor
             except Exception:
                 if self._running:
                     await asyncio.sleep(5)
+
+    async def _catch_up_via_rest(self) -> None:
+        """Paginate through missed events via the REST API.
+
+        Dispatches each event through the registered handlers, exactly
+        as if it arrived over the WebSocket.
+        """
+        assert self._client is not None
+        events = await self._client.get_events(since_id=self._last_event_id)
+        for event in events:
+            await self._dispatch_event(event)
+
+    async def _dispatch_event(self, typed_event: AnyEvent) -> None:
+        """Dispatch a typed event to registered handlers and update the cursor."""
+        if typed_event.id > self._last_event_id:
+            self._last_event_id = typed_event.id
+
+        for handler in self._handlers.get(typed_event.type, []):
+            try:
+                await handler(typed_event)
+            except Exception:
+                pass
+
+        if typed_event.id > 0 and self._on_event_id:
+            try:
+                self._on_event_id(typed_event.id)
+            except Exception:
+                pass
 
     async def _join_channel(self, ws: Any) -> None:
         """Join the user:self channel with event replay."""
@@ -141,21 +191,7 @@ class Gateway:
         if event_name == "event":
             # Parse via discriminated union RootModel, then unwrap
             typed_event = Event.model_validate(payload).root
-
-            if typed_event.id > self._last_event_id:
-                self._last_event_id = typed_event.id
-
-            for handler in self._handlers.get(typed_event.type, []):
-                try:
-                    await handler(typed_event)
-                except Exception:
-                    pass
-
-            if typed_event.id > 0 and self._on_event_id:
-                try:
-                    self._on_event_id(typed_event.id)
-                except Exception:
-                    pass
+            await self._dispatch_event(typed_event)
 
     def stop(self) -> None:
         """Signal the gateway to stop."""
