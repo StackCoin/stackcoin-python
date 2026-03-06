@@ -193,14 +193,28 @@ class Client:
         return Transaction.model_validate(resp.json())
 
     async def get_events(self, *, since_id: int = 0) -> list[AnyEvent]:
-        """Return typed events since the given ID."""
-        params: dict[str, Any] = {}
-        if since_id:
-            params["since_id"] = since_id
-        resp = await self._http.get("/api/events", params=params)
-        self._raise_for_error(resp)
-        wrapper = EventsResponse.model_validate(resp.json())
-        return [e.root for e in wrapper.events]
+        """Return typed events since the given ID.
+
+        Automatically paginates through all available events.
+        """
+        all_events: list[AnyEvent] = []
+        cursor = since_id
+
+        while True:
+            params: dict[str, Any] = {}
+            if cursor:
+                params["since_id"] = cursor
+            resp = await self._http.get("/api/events", params=params)
+            self._raise_for_error(resp)
+            wrapper = EventsResponse.model_validate(resp.json())
+            page = [e.root for e in wrapper.events]
+            all_events.extend(page)
+
+            if not wrapper.has_more or not page:
+                break
+            cursor = page[-1].id
+
+        return all_events
 
     async def get_discord_guilds(self) -> list[DiscordGuild]:
         """Return all Discord guilds."""

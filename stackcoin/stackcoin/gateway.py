@@ -65,6 +65,8 @@ class Gateway:
         """Connect and listen for events. Reconnects automatically on failure."""
         import websockets
 
+        from .errors import TooManyMissedEventsError
+
         self._running = True
 
         while self._running:
@@ -83,12 +85,16 @@ class Gateway:
                     finally:
                         heartbeat_task.cancel()
 
+            except TooManyMissedEventsError:
+                raise  # Don't retry — caller must catch up via REST
             except Exception:
                 if self._running:
                     await asyncio.sleep(5)
 
     async def _join_channel(self, ws: Any) -> None:
         """Join the user:self channel with event replay."""
+        from .errors import TooManyMissedEventsError
+
         self._ref_counter += 1
         join_msg = json.dumps(
             [
@@ -102,8 +108,19 @@ class Gateway:
         await ws.send(join_msg)
 
         reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
-        if not (reply[3] == "phx_reply" and reply[4].get("status") == "ok"):
-            raise ConnectionError(f"Failed to join channel: {reply}")
+        if reply[3] == "phx_reply" and reply[4].get("status") == "ok":
+            return
+
+        # Check for too_many_missed_events rejection
+        response = reply[4].get("response", {})
+        if response.get("reason") == "too_many_missed_events":
+            raise TooManyMissedEventsError(
+                missed_count=response.get("missed_count", 0),
+                replay_limit=response.get("replay_limit", 0),
+                message=response.get("message", "Too many missed events"),
+            )
+
+        raise ConnectionError(f"Failed to join channel: {reply}")
 
     async def _heartbeat(self, ws: Any) -> None:
         """Send periodic heartbeats."""
