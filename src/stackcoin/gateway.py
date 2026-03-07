@@ -148,7 +148,9 @@ class Gateway:
             try:
                 await handler(typed_event)
             except Exception:
-                logger.exception("Error in %s handler for event %s", typed_event.type, typed_event.id)
+                logger.exception(
+                    "Error in %s handler for event %s", typed_event.type, typed_event.id
+                )
 
         if typed_event.id > 0 and self._on_event_id:
             try:

@@ -9,6 +9,7 @@ import httpx
 from .errors import StackCoinError
 from .models import (
     CreateRequestResponse,
+    DiscordBotResponse,
     DiscordGuild,
     DiscordGuildsResponse,
     EventsResponse,
@@ -215,6 +216,13 @@ class Client:
             cursor = page[-1].id
 
         return all_events
+
+    async def get_discord_bot_id(self) -> str:
+        """Return the Discord user ID of the StackCoin bot."""
+        resp = await self._http.get("/api/discord/bot")
+        self._raise_for_error(resp)
+        bot = DiscordBotResponse.model_validate(resp.json())
+        return bot.discord_id
 
     async def get_discord_guilds(self) -> list[DiscordGuild]:
         """Return all Discord guilds."""
