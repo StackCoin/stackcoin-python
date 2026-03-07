@@ -81,7 +81,7 @@ Tests for this library live in the main
 end-to-end tests that boot a real StackCoin server:
 
 ```sh
-cd /path/to/StackCoin/test/e2e
+cd /path/to/StackCoin/test/e2e/py
 uv sync
 uv run pytest
 ```
