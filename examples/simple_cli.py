@@ -6,6 +6,7 @@ in the background.
 """
 
 import asyncio
+import getpass
 import os
 import sys
 
@@ -98,10 +99,7 @@ async def handle_command(client: stackcoin.Client, line: str):
         txns = await client.get_transactions()
         for t in txns[:10]:
             label_str = f" ({t.label})" if t.label else ""
-            print(
-                f"  #{t.id} {t.from_.username} -> {t.to.username}: "
-                f"{t.amount} STK{label_str}"
-            )
+            print(f"  #{t.id} {t.from_.username} -> {t.to.username}: {t.amount} STK{label_str}")
         print(f"({len(txns)} total)")
 
     elif cmd == "events":
@@ -129,7 +127,7 @@ async def read_stdin_lines(queue: asyncio.Queue[str | None]):
 async def main():
     token = os.getenv("STACKCOIN_BOT_TOKEN")
     if not token:
-        token = input("Enter your bot token: ").strip()
+        token = getpass.getpass("Enter your bot token: ").strip()
         if not token:
             print("Token is required")
             return
@@ -154,9 +152,7 @@ async def main():
         @gateway.on("transfer.completed")
         async def on_transfer(event: stackcoin.TransferCompletedEvent):
             if event.data.role == "sender":
-                print(
-                    f"\n  [event] Sent {event.data.amount} STK to user #{event.data.to_id}"
-                )
+                print(f"\n  [event] Sent {event.data.amount} STK to user #{event.data.to_id}")
             else:
                 print(
                     f"\n  [event] Received {event.data.amount} STK from user #{event.data.from_id}"
@@ -165,9 +161,7 @@ async def main():
 
         @gateway.on("request.created")
         async def on_request_created(event: stackcoin.RequestCreatedEvent):
-            print(
-                f"\n  [event] New request #{event.data.request_id} for {event.data.amount} STK"
-            )
+            print(f"\n  [event] New request #{event.data.request_id} for {event.data.amount} STK")
             print("> ", end="", flush=True)
 
         @gateway.on("request.accepted")
