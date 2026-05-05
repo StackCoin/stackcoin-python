@@ -169,6 +169,18 @@ class Client:
         self._raise_for_error(resp)
         return resp.json()
 
+    async def get_preauth(self, preauth_id: int) -> dict:
+        """Get a single preauthorization with remaining budget."""
+        resp = await self._http.get(f"/api/preauth/{preauth_id}")
+        self._raise_for_error(resp)
+        return resp.json()
+
+    async def revoke_preauth(self, preauth_id: int) -> dict:
+        """Revoke an active preauthorization."""
+        resp = await self._http.post(f"/api/preauth/{preauth_id}/revoke")
+        self._raise_for_error(resp)
+        return resp.json()
+
     async def get_preauths(self, *, user_id: int | None = None) -> list[dict]:
         """List preauths for this bot, optionally filtered by user_id."""
         params: dict[str, Any] = {}
