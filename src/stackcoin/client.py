@@ -136,11 +136,14 @@ class Client:
         *,
         label: str | None = None,
         idempotency_key: str | None = None,
+        use_preauth: bool = False,
     ) -> CreateRequestResponse:
         """Create a STK request to another user."""
         body: dict[str, Any] = {"amount": amount}
         if label is not None:
             body["label"] = label
+        if use_preauth:
+            body["use_preauth"] = True
         headers: dict[str, str] = {}
         if idempotency_key is not None:
             headers["Idempotency-Key"] = idempotency_key
@@ -151,6 +154,29 @@ class Client:
         )
         self._raise_for_error(resp)
         return CreateRequestResponse.model_validate(resp.json())
+
+    async def create_preauth(
+        self,
+        user_id: int,
+        max_amount: int,
+        window_hours: int,
+    ) -> dict:
+        """Request a preauthorization from a user."""
+        resp = await self._http.post(
+            f"/api/user/{user_id}/preauth",
+            json={"max_amount": max_amount, "window_hours": window_hours},
+        )
+        self._raise_for_error(resp)
+        return resp.json()
+
+    async def get_preauths(self, *, user_id: int | None = None) -> list[dict]:
+        """List preauths for this bot, optionally filtered by user_id."""
+        params: dict[str, Any] = {}
+        if user_id is not None:
+            params["user_id"] = user_id
+        resp = await self._http.get("/api/preauths", params=params)
+        self._raise_for_error(resp)
+        return resp.json().get("preauths", [])
 
     async def get_request(self, request_id: int) -> Request:
         """Return a single request by its ID."""

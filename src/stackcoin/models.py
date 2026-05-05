@@ -34,6 +34,7 @@ class CreateRequestResponse(BaseModel):
     responder: Responder
     status: str = Field(..., description="Request status")
     success: bool = Field(..., description="Whether the operation succeeded")
+    transaction_id: int | None = Field(None, description="Transaction ID (set when preauth accepted)")
 
 
 class DiscordBotResponse(BaseModel):
