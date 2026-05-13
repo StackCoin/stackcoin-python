@@ -13,6 +13,9 @@ from .models import (
     DiscordGuild,
     DiscordGuildsResponse,
     EventsResponse,
+    PreauthApprovedEvent,
+    PreauthCreatedEvent,
+    PreauthRevokedEvent,
     Request,
     RequestAcceptedEvent,
     RequestActionResponse,
@@ -28,7 +31,15 @@ from .models import (
 )
 
 # Union of all concrete event types (unwrapped from Event RootModel)
-AnyEvent = TransferCompletedEvent | RequestCreatedEvent | RequestAcceptedEvent | RequestDeniedEvent
+AnyEvent = (
+    TransferCompletedEvent
+    | RequestCreatedEvent
+    | RequestAcceptedEvent
+    | RequestDeniedEvent
+    | PreauthCreatedEvent
+    | PreauthApprovedEvent
+    | PreauthRevokedEvent
+)
 
 
 class Client:
