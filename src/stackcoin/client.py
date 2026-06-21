@@ -83,6 +83,38 @@ class Client:
         """Close the underlying HTTP connection pool."""
         await self._http.aclose()
 
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json: Any = None,
+        headers: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        """Issue an HTTP request to StackCoin, normalising every failure mode.
+
+        Any transport-level fault (DNS, connection refused, timeout, network
+        reset, etc.) is wrapped in a ``StackCoinError`` with ``status_code=0``
+        and ``error="transport_error"`` so callers only ever need to catch
+        :class:`StackCoinError` — never raw ``httpx`` exceptions.
+
+        Non-2xx responses are mapped to ``StackCoinError`` via
+        :meth:`_raise_for_error` as before.
+        """
+        try:
+            resp = await self._http.request(
+                method, url, params=params, json=json, headers=headers
+            )
+        except httpx.HTTPError as e:
+            raise StackCoinError(
+                StackCoinError.TRANSPORT_STATUS,
+                StackCoinError.TRANSPORT_ERROR,
+                repr(e),
+            ) from e
+        self._raise_for_error(resp)
+        return resp
+
     @staticmethod
     def _raise_for_error(resp: httpx.Response) -> None:
         """Raise :class:`StackCoinError` on any 4xx/5xx response."""
@@ -97,14 +129,12 @@ class Client:
 
     async def get_me(self) -> User:
         """Return the authenticated user's profile."""
-        resp = await self._http.get("/api/user/me")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", "/api/user/me")
         return User.model_validate(resp.json())
 
     async def get_user(self, user_id: int) -> User:
         """Return a user by their ID."""
-        resp = await self._http.get(f"/api/user/{user_id}")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", f"/api/user/{user_id}")
         return User.model_validate(resp.json())
 
     async def get_users(self, *, discord_id: str | None = None) -> list[User]:
@@ -112,8 +142,7 @@ class Client:
         params: dict[str, Any] = {}
         if discord_id is not None:
             params["discord_id"] = discord_id
-        resp = await self._http.get("/api/users", params=params)
-        self._raise_for_error(resp)
+        resp = await self._request("GET", "/api/users", params=params)
         wrapper = UsersResponse.model_validate(resp.json())
         return wrapper.users or []
 
@@ -132,12 +161,12 @@ class Client:
         headers: dict[str, str] = {}
         if idempotency_key is not None:
             headers["Idempotency-Key"] = idempotency_key
-        resp = await self._http.post(
+        resp = await self._request(
+            "POST",
             f"/api/user/{to_user_id}/send",
             json=body,
             headers=headers,
         )
-        self._raise_for_error(resp)
         return SendStkResponse.model_validate(resp.json())
 
     async def create_request(
@@ -158,12 +187,12 @@ class Client:
         headers: dict[str, str] = {}
         if idempotency_key is not None:
             headers["Idempotency-Key"] = idempotency_key
-        resp = await self._http.post(
+        resp = await self._request(
+            "POST",
             f"/api/user/{to_user_id}/request",
             json=body,
             headers=headers,
         )
-        self._raise_for_error(resp)
         return CreateRequestResponse.model_validate(resp.json())
 
     async def create_preauth(
@@ -173,23 +202,21 @@ class Client:
         window_hours: int,
     ) -> dict:
         """Request a preauthorization from a user."""
-        resp = await self._http.post(
+        resp = await self._request(
+            "POST",
             f"/api/user/{user_id}/preauth",
             json={"max_amount": max_amount, "window_hours": window_hours},
         )
-        self._raise_for_error(resp)
         return resp.json()
 
     async def get_preauth(self, preauth_id: int) -> dict:
         """Get a single preauthorization with remaining budget."""
-        resp = await self._http.get(f"/api/preauth/{preauth_id}")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", f"/api/preauth/{preauth_id}")
         return resp.json()
 
     async def revoke_preauth(self, preauth_id: int) -> dict:
         """Revoke an active preauthorization."""
-        resp = await self._http.post(f"/api/preauth/{preauth_id}/revoke")
-        self._raise_for_error(resp)
+        resp = await self._request("POST", f"/api/preauth/{preauth_id}/revoke")
         return resp.json()
 
     async def get_preauths(self, *, user_id: int | None = None) -> list[dict]:
@@ -197,14 +224,12 @@ class Client:
         params: dict[str, Any] = {}
         if user_id is not None:
             params["user_id"] = user_id
-        resp = await self._http.get("/api/preauths", params=params)
-        self._raise_for_error(resp)
+        resp = await self._request("GET", "/api/preauths", params=params)
         return resp.json().get("preauths", [])
 
     async def get_request(self, request_id: int) -> Request:
         """Return a single request by its ID."""
-        resp = await self._http.get(f"/api/request/{request_id}")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", f"/api/request/{request_id}")
         return Request.model_validate(resp.json())
 
     async def get_requests(self, *, status: str | None = None) -> list[Request]:
@@ -212,34 +237,29 @@ class Client:
         params: dict[str, Any] = {}
         if status is not None:
             params["status"] = status
-        resp = await self._http.get("/api/requests", params=params)
-        self._raise_for_error(resp)
+        resp = await self._request("GET", "/api/requests", params=params)
         wrapper = RequestsResponse.model_validate(resp.json())
         return wrapper.requests or []
 
     async def accept_request(self, request_id: int) -> RequestActionResponse:
         """Accept a pending STK request."""
-        resp = await self._http.post(f"/api/requests/{request_id}/accept")
-        self._raise_for_error(resp)
+        resp = await self._request("POST", f"/api/requests/{request_id}/accept")
         return RequestActionResponse.model_validate(resp.json())
 
     async def deny_request(self, request_id: int) -> RequestActionResponse:
         """Deny a pending STK request."""
-        resp = await self._http.post(f"/api/requests/{request_id}/deny")
-        self._raise_for_error(resp)
+        resp = await self._request("POST", f"/api/requests/{request_id}/deny")
         return RequestActionResponse.model_validate(resp.json())
 
     async def get_transactions(self) -> list[Transaction]:
         """Return transactions for the authenticated user."""
-        resp = await self._http.get("/api/transactions")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", "/api/transactions")
         wrapper = TransactionsResponse.model_validate(resp.json())
         return wrapper.transactions or []
 
     async def get_transaction(self, transaction_id: int) -> Transaction:
         """Return a single transaction by its ID."""
-        resp = await self._http.get(f"/api/transaction/{transaction_id}")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", f"/api/transaction/{transaction_id}")
         return Transaction.model_validate(resp.json())
 
     async def get_events(self, *, since_id: int = 0) -> list[AnyEvent]:
@@ -254,10 +274,10 @@ class Client:
             params: dict[str, Any] = {}
             if cursor > 0:
                 params["since_id"] = cursor
-            resp = await self._http.get("/api/events", params=params)
-            self._raise_for_error(resp)
+            resp = await self._request("GET", "/api/events", params=params)
             wrapper = EventsResponse.model_validate(resp.json())
             page = [e.root for e in wrapper.events]
+
             all_events.extend(page)
 
             if not wrapper.has_more or not page:
@@ -268,20 +288,17 @@ class Client:
 
     async def get_discord_bot_id(self) -> str:
         """Return the Discord user ID of the StackCoin bot."""
-        resp = await self._http.get("/api/discord/bot")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", "/api/discord/bot")
         bot = DiscordBotResponse.model_validate(resp.json())
         return bot.discord_id
 
     async def get_discord_guilds(self) -> list[DiscordGuild]:
         """Return all Discord guilds."""
-        resp = await self._http.get("/api/discord/guilds")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", "/api/discord/guilds")
         wrapper = DiscordGuildsResponse.model_validate(resp.json())
         return wrapper.guilds or []
 
     async def get_discord_guild(self, snowflake: str) -> DiscordGuild:
         """Return a single Discord guild by its snowflake ID."""
-        resp = await self._http.get(f"/api/discord/guild/{snowflake}")
-        self._raise_for_error(resp)
+        resp = await self._request("GET", f"/api/discord/guild/{snowflake}")
         return DiscordGuild.model_validate(resp.json())

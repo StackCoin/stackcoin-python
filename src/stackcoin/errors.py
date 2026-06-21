@@ -1,5 +1,22 @@
 class StackCoinError(Exception):
-    """Raised when the StackCoin API returns an error response."""
+    """Raised on any failure to reach or get a successful response from StackCoin.
+
+    Covers both transport-level failures (connection refused, DNS error, timeout,
+    etc.) and non-2xx HTTP responses. Callers should never need to catch
+    ``httpx.HTTPError`` directly — anything that goes wrong talking to StackCoin
+    is funnelled through this class.
+
+    Attributes:
+        status_code: HTTP status code, or ``0`` for transport failures that never
+            produced a response (``error == "transport_error"``).
+        error: Short machine-readable code. ``"transport_error"`` for network faults,
+            otherwise the StackCoin API's own ``error`` field (or ``http_<status>``).
+        message: Human-readable detail, if available.
+    """
+
+    # Sentinel status code for failures that produced no HTTP response at all.
+    TRANSPORT_STATUS: int = 0
+    TRANSPORT_ERROR: str = "transport_error"
 
     def __init__(self, status_code: int, error: str, message: str | None = None):
         self.status_code = status_code
